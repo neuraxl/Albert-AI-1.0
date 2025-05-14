@@ -1,0 +1,7 @@
+function exportNeuronData() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(neurons, null, 2));
+  const dlAnchorElem = document.createElement('a');
+  dlAnchorElem.setAttribute("href", dataStr);
+  dlAnchorElem.setAttribute("download", "neurones_albertai.json");
+  dlAnchorElem.click();
+}
