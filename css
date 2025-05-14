@@ -1,0 +1,16 @@
+@keyframes neonPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 5px #00ffe1,
+      0 0 10px #00ffe1,
+      0 0 20px #00ffe1,
+      0 0 40px #00ffe1;
+  }
+  50% {
+    box-shadow:
+      0 0 10px #ff00ff,
+      0 0 20px #ff00ff,
+      0 0 30px #ff00ff,
+      0 0 50px #ff00ff;
+  }
+}
