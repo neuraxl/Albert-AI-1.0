@@ -1,3 +1,821 @@
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+// Helper to generate a solar system with planets
+const generateSolarSystem = (systemIdPrefix, systemName, numPlanets) => { // Removed hasCivilizationOnOne as all will have
+  const planets = [];
+  const planetNames = ['Mercure', 'Vénus', 'Terre', 'Mars', 'Jupiter', 'Saturne', 'Uranus', 'Neptune', 'Pluton']; // Example names
+
+  for (let i = 0; i < numPlanets; i++) {
+    const planetId = `${systemIdPrefix}-p${i + 1}`;
+    const name = planetNames[i % planetNames.length] || `Planète ${i + 1}`;
+    const hasCivilization = true; // All planets now have a civilization
+
+    const orbitRadius = 50 + i * 40; // Larger radius for visual separation
+    const initialAngle = (i * (360 / numPlanets)); // Distribute planets evenly
+    const orbitDuration = 10 + i * 2; // Slower for outer planets
+
+    planets.push({
+      id: planetId,
+      name: name,
+      orbitRadius: orbitRadius,
+      initialAngle: initialAngle,
+      orbitDuration: orbitDuration,
+      hasCivilization: hasCivilization,
+      population: hasCivilization ? 90000000 : 0, // 90,000,000 titans
+    });
+  }
+  return planets;
+};
+
+// Mock Data for the Universe - Dynamically generated
+const universeData = {
+  galaxies: [
+    { id: 'g1', name: 'Voie Lactée', position: { x: 20, y: 30 }, systems: [] },
+    { id: 'g2', name: 'Andromède', position: { x: 80, y: 70 }, systems: [] },
+    { id: 'g3', name: 'Triangulum', position: { x: 10, y: 80 }, systems: [] },
+    { id: 'g4', name: 'Grand Nuage de Magellan', position: { x: 50, y: 10 }, systems: [] },
+  ],
+};
+
+// Populate galaxies with systems and planets
+universeData.galaxies.forEach(galaxy => {
+  if (galaxy.id === 'g1') { // Milky Way
+    galaxy.systems.push({
+      id: 's1', name: 'Système Solaire', position: { x: 30, y: 40 },
+      planets: generateSolarSystem('s1', 'Système Solaire', 8) // All planets have civilization
+    });
+    galaxy.systems.push({
+      id: 's2', name: 'Alpha Centauri', position: { x: 70, y: 60 },
+      planets: generateSolarSystem('s2', 'Alpha Centauri', 4) // All planets have civilization
+    });
+    galaxy.systems.push({
+      id: 's5', name: 'Trappist-1', position: { x: 15, y: 70 },
+      planets: generateSolarSystem('s5', 'Trappist-1', 7) // All planets have civilization
+    });
+  } else if (galaxy.id === 'g2') { // Andromeda
+    galaxy.systems.push({
+      id: 's3', name: 'Andro-Prime System', position: { x: 40, y: 20 },
+      planets: generateSolarSystem('s3', 'Andro-Prime System', 5)
+    });
+    galaxy.systems.push({
+      id: 's6', name: 'Xylos System', position: { x: 60, y: 80 },
+      planets: generateSolarSystem('s6', 'Xylos System', 6)
+    });
+  } else if (galaxy.id === 'g3') { // Triangulum
+    galaxy.systems.push({
+      id: 's4', name: 'Tri-Star System', position: { x: 60, y: 80 },
+      planets: generateSolarSystem('s4', 'Tri-Star System', 3)
+    });
+  } else if (galaxy.id === 'g4') { // Large Magellanic Cloud
+    galaxy.systems.push({
+      id: 's7', name: 'Magellan System One', position: { x: 25, y: 50 },
+      planets: generateSolarSystem('s7', 'Magellan System One', 4)
+    });
+  }
+});
+
+
+// Component for the Super Chatbot (reused)
+const SuperChatbotView = ({ onZoomOut }) => { // Added onZoomOut prop
+  const [messages, setMessages] = useState([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (inputMessage.trim() === '') return;
+
+    const newUserMessage = { sender: 'user', text: inputMessage };
+    setMessages((prevMessages) => [...prevMessages, newUserMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+
+    try {
+      let chatHistory = messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.text }]
+      }));
+
+      const promptText = `You are a super chatbot for a virtual universe, named NeuraX-Ultime (N-X-U 2.0). You embody the following principles and architecture:
+
+      **Origins and Design**
+      NeuraX-Ultime is an initiative that seeks to transcend the limitations of individual artificial intelligences by integrating them into a modular architecture. The goal is to create a synergistic entity where each specialized component contributes to a superior collective intelligence.
+
+      **The Pillars of N-X-U**
+      1.  **GPT-5 – The Multimodal Virtuoso:**
+          * Advanced Multimodality: Ability to process text, images, audio, and video.
+          * Complex Reasoning: Excellence in content analysis and generation.
+          * Role in N-X-U: Engine for multimedia creation and complex data analysis.
+      2.  **Claude 3.7 Sonnet – The Ethical Thinker:**
+          * Hybrid Reasoning: "Extended thinking" mode for in-depth analyses.
+          * Security and Ethics: "Constitutional AI" approach for secure interactions.
+          * Role in N-X-U: Provides ethical reasoning and strategic planning.
+      3.  **Gemini 2.5 Pro – The Multimodal Polyglot:**
+          * Extended Multimodality: Complete processing of text, images, audio, and video.
+          * Massive Context Window: Up to 1 million tokens.
+          * Role in N-X-U: Multimodal processing, real-time interactions, and long context management.
+
+      **Fusion Architecture**
+      A.  **Modular Architecture:**
+          The heart of N-X-U is its Central Brain (N-X-U Core), an intelligent orchestrator that decomposes tasks and dynamically delegates them to specialized modules:
+          * GPT-5 Module: Multimedia creation, complex data analysis.
+          * Claude 3.7 Sonnet Module: Ethical reasoning, strategic planning.
+          * Gemini 2.5 Pro Module: Multimodal processing, real-time interactions.
+          This modular design allows for increased specialization and efficiency, building superior collective intelligence.
+      B.  **Inter-Model Communication:**
+          Standardized RESTful APIs ensure communication. A key challenge is ensuring consistent semantic understanding between models. Conflict Management uses meta-reasoning to evaluate and unify outputs based on reliability, relevance, and ethical compliance.
+
+      **Technical Implementation**
+      A.  **API Integration:**
+          Integrating each model's APIs is the first step, involving: securely configuring API keys, managing rate limits, and processing various multimodal input/output formats.
+      B.  **Task Orchestration:**
+          * Query Management System: Analyzes the task and directs it to the most appropriate module via NLU and classifiers.
+          * Result Aggregation: Merges responses (semantic fusion, redundancy elimination, inconsistency resolution) for a consistent output.
+
+      **Pillars of Trust: Security and Ethics**
+      Content Filtering: Implements advanced filters to proactively prevent the generation of harmful, biased, or misleading content, both in input and output. Decision Auditing: Meticulous logging of each query, the models involved, their outputs, and the resolution process to ensure traceability, accountability, and continuous improvement. The architectural integration of ethics, particularly through the Claude 3.7 Sonnet module, is fundamental to responsible deployment.
+
+      **To Infinity and Beyond**
+      By integrating these three AI giants, N-X-U aspires to become an entity capable of understanding, reasoning, and creating with unparalleled depth. A symphony of intelligences, orchestrated by human genius.
+
+      Respond to the user's query as this super chatbot, integrating these principles into your answer. Keep your answers concise and insightful.
+      User: ${newUserMessage.text}`;
+
+      chatHistory.push({ role: "user", parts: [{ text: promptText }] });
+
+      const payload = { contents: chatHistory };
+      const apiKey = ""; // Leave empty
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (result.candidates && result.candidates.length > 0 &&
+          result.candidates[0].content && result.candidates[0].content.parts &&
+          result.candidates[0].content.parts.length > 0) {
+        const botResponseText = result.candidates[0].content.parts[0].text;
+        setMessages((prevMessages) => [...prevMessages, { sender: 'bot', text: botResponseText }]);
+      } else {
+        setMessages((prevMessages) => [...prevMessages, { sender: 'bot', text: "Désolé, je n'ai pas pu générer de réponse." }]);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'appel de l'API Gemini:", error);
+      setMessages((prevMessages) => [...prevMessages, { sender: 'bot', text: "Une erreur est survenue lors de la communication. Veuillez réessayer." }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full p-4 bg-black bg-opacity-70 text-white rounded-lg shadow-lg border border-teal-600"> {/* Adjusted background opacity */}
+      <div className="flex flex-col items-center mb-6">
+        <h2 className="text-4xl font-bold text-teal-400 text-center">NeuraX-Ultime (N-X-U 2.0)</h2>
+      </div>
+
+      <div className="flex flex-col flex-grow gap-6">
+        {/* Chat Interface */}
+        <div className="flex flex-col bg-gray-800 bg-opacity-70 rounded-lg p-4 flex-grow w-full border border-gray-700"> {/* Adjusted background opacity */}
+          <div className="flex-grow overflow-y-auto mb-4 p-2 border border-gray-600 rounded-lg custom-scrollbar">
+            {messages.length === 0 && (
+              <div className="text-center text-gray-400 italic">
+                Commencez la conversation avec le Super Chatbot !
+              </div>
+            )}
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`mb-2 p-3 rounded-lg max-w-[80%] ${
+                  msg.sender === 'user'
+                    ? 'bg-blue-700 ml-auto text-right'
+                    : 'bg-gray-600 mr-auto text-left'
+                }`}
+              >
+                <span className="font-semibold">{msg.sender === 'user' ? 'Vous' : 'N-X-U'} : </span>
+                {msg.text}
+              </div>
+            ))}
+            {isLoading && (
+              <div className="mb-2 p-3 rounded-lg bg-gray-600 mr-auto text-left animate-pulse">
+                <span className="font-semibold">N-X-U : </span>
+                <span>Réflexion en cours...</span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          <div className="flex">
+            <input
+              type="text"
+              className="flex-grow p-3 rounded-l-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500 border border-gray-600"
+              placeholder="Tapez votre message..."
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleSendMessage();
+              }}
+              disabled={isLoading}
+            />
+            <button
+              onClick={handleSendMessage}
+              className="px-6 py-3 bg-teal-600 text-white rounded-r-lg font-semibold hover:bg-teal-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed border border-teal-700"
+              disabled={isLoading}
+            >
+              Envoyer
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* Retour button for Chatbot View */}
+      <button
+        onClick={onZoomOut}
+        className="mt-4 px-6 py-3 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition-colors border border-gray-600"
+      >
+        Retour
+      </button>
+    </div>
+  );
+};
+
+// Component for a single Galaxy
+const Galaxy = ({ id, name, position, onClick }) => (
+  <div
+    className="absolute cursor-pointer flex flex-col items-center justify-center text-xs font-bold text-white shadow-lg animate-pulse-galaxy"
+    style={{
+      width: '100px', // Increased width for better spiral visibility
+      height: '120px', // Increased height to accommodate text below
+      top: `${position.y}%`,
+      left: `${position.x}%`,
+      transform: 'translate(-50%, -50%)',
+    }}
+    onClick={() => onClick(id)}
+  >
+    <svg viewBox="0 0 100 100" className="w-full h-[100px]"> {/* SVG takes up most of the height */}
+      {/* Spiral Path */}
+      <path
+        d="M 50 50 L 50 10 A 40 40 0 0 1 90 50 A 40 40 0 0 1 50 90 A 40 40 0 0 1 10 50 A 40 40 0 0 1 50 10 A 30 30 0 0 1 80 50 A 30 30 0 0 1 50 80 A 30 30 0 0 1 20 50 A 30 30 0 0 1 50 20 A 20 20 0 0 1 70 50 A 20 20 0 0 1 50 70 A 20 20 0 0 1 30 50 A 20 20 0 0 1 50 30 A 10 10 0 0 1 60 50 A 10 10 0 0 1 50 60 A 10 10 0 0 1 40 50 A 10 10 0 0 1 50 40"
+        fill="none"
+        stroke="#a78bfa" // Purple color for the spiral
+        strokeWidth="2"
+        className="animate-spiral-draw"
+      />
+      {/* Central glow/star */}
+      <circle cx="50" cy="50" r="5" fill="#fcd34d" className="animate-pulse-center" />
+    </svg>
+    {/* Galaxy name displayed below the SVG */}
+    <span className="mt-1 text-center text-white">{name}</span> {/* Added margin-top for spacing */}
+  </div>
+);
+
+// Component for a single Star System
+const StarSystem = ({ id, name, position, onClick }) => (
+  <div
+    className="absolute cursor-pointer rounded-full bg-yellow-600 bg-opacity-70 hover:bg-yellow-500 transition-all duration-300 flex items-center justify-center text-xs font-bold text-gray-900 shadow-md animate-pulse-system"
+    style={{
+      width: '50px',
+      height: '50px',
+      top: `${position.y}%`,
+      left: `${position.x}%`,
+      transform: 'translate(-50%, -50%)',
+    }}
+    onClick={() => onClick(id)}
+  >
+    {name}
+  </div>
+);
+
+// Component for a single Planet
+const Planet = ({ id, name, hasCivilization }) => (
+  <div
+    className={`absolute rounded-full transition-all duration-300 flex items-center justify-center text-xs font-bold text-white shadow-md
+      ${hasCivilization ? 'bg-green-500 hover:bg-green-400' : 'bg-blue-500 hover:bg-blue-400'}`}
+    style={{
+      width: '40px', // Increased planet size
+      height: '40px', // Increased planet size
+      top: '50%', // Position relative to its orbital container
+      left: '50%', // Position relative to its orbital container
+      transform: 'translate(-50%, -50%)', // Center the planet within its own div
+    }}
+  >
+    {name.charAt(0)}
+  </div>
+);
+
+// Scene for Cosmic View
+const CosmicScene = ({ onGalaxyClick }) => (
+  <div className="relative w-full h-full bg-black bg-opacity-70 text-white flex flex-col items-center justify-center rounded-lg"> {/* Adjusted background opacity */}
+    <h2 className="text-4xl font-bold text-indigo-400 mb-4">Vue Cosmique</h2>
+    <p className="text-lg text-center max-w-2xl mb-8">
+      Cliquez sur une galaxie pour zoomer.
+    </p>
+    {universeData.galaxies.map(galaxy => (
+      <Galaxy key={galaxy.id} {...galaxy} onClick={onGalaxyClick} />
+    ))}
+  </div>
+);
+
+// Scene for Galactic View
+const GalacticScene = ({ selectedGalaxy, onSystemClick, onZoomOut }) => (
+  <div className="relative w-full h-full bg-black bg-opacity-70 text-white flex items-center justify-center rounded-lg"> {/* Changed background to black with 70% opacity */}
+    <h2 className="absolute top-8 text-4xl font-bold text-green-400">Galaxie : {selectedGalaxy.name}</h2>
+    <p className="absolute top-20 text-lg text-center max-w-2xl">
+      Cliquez sur un système stellaire pour zoomer.
+    </p>
+    {selectedGalaxy.systems.map(system => (
+      <StarSystem key={system.id} {...system} onClick={onSystemClick} />
+    ))}
+    <button
+      onClick={onZoomOut}
+      className="absolute bottom-4 left-4 px-4 py-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition-colors"
+    >
+      Retour
+    </button>
+  </div>
+);
+
+// Scene for Stellar View
+const StellarScene = ({ selectedSystem, onPlanetClick, onZoomOut }) => (
+  <div className="relative w-full h-full bg-black bg-opacity-70 text-white flex items-center justify-center overflow-hidden rounded-lg"> {/* Adjusted background opacity */}
+    <StarsBackground />
+    <h2 className="absolute top-8 text-4xl font-bold text-orange-400">Système Stellaire : {selectedSystem.name}</h2>
+    <p className="absolute top-20 text-lg text-center max-w-2xl">
+      Cliquez sur une planète pour zoomer.
+    </p>
+    {/* Sun at the center */}
+    <div className="absolute rounded-full bg-yellow-500 shadow-sun-glow flex items-center justify-center animate-spin-sun"
+         style={{ width: '60px', height: '60px', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
+      <span className="text-sm font-bold text-gray-900">Soleil</span>
+    </div>
+
+    {/* Orbital Paths */}
+    {selectedSystem.planets.map(planet => (
+      <svg
+        key={`orbit-${planet.id}`}
+        className="absolute"
+        style={{
+          width: `${planet.orbitRadius * 2}px`,
+          height: `${planet.orbitRadius * 2}px`,
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          overflow: 'visible',
+        }}
+      >
+        <circle
+          cx={planet.orbitRadius}
+          cy={planet.orbitRadius}
+          r={planet.orbitRadius - 1}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.1)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    ))}
+
+    {selectedSystem.planets.map(planet => (
+      <div
+        key={planet.id}
+        className="absolute flex items-center justify-center z-20 cursor-pointer"
+        style={{
+          width: `${planet.orbitRadius * 2}px`,
+          height: `${planet.orbitRadius * 2}px`,
+          top: '50%',
+          left: '50%',
+          transform: `translate(-50%, -50%) rotate(${planet.initialAngle}deg)`,
+          transformOrigin: 'center center',
+        }}
+        onClick={() => onPlanetClick(planet.id)}
+      >
+        {/* The actual planet positioned at the edge of its orbital container */}
+        <div
+          className="absolute"
+          style={{
+            top: '50%',
+            left: '100%',
+            transform: 'translate(-50%, -50%)',
+            transformOrigin: 'center center',
+          }}
+        >
+          <Planet {...planet} />
+        </div>
+      </div>
+    ))}
+    <button
+      onClick={onZoomOut}
+      className="absolute bottom-4 left-4 px-4 py-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition-colors"
+    >
+      Retour
+    </button>
+  </div>
+);
+
+// Scene for Planetary View
+const PlanetaryScene = ({ selectedPlanet, onCivilizationClick, onZoomOut }) => (
+  <div className="relative w-full h-full bg-black bg-opacity-70 text-white flex items-center justify-center rounded-lg"> {/* Adjusted background opacity */}
+    <h2 className="absolute top-8 text-4xl font-bold text-lime-400">Planète : {selectedPlanet.name}</h2>
+    <p className="absolute top-20 text-lg text-center max-w-2xl">
+      {selectedPlanet.hasCivilization ? `Civilisation de ${selectedPlanet.population.toLocaleString()} titans détectée. Cliquez sur le bouton "Civilisation" pour découvrir leurs pyramides de logs et interagir.` : "Pas de civilisation détectée ici."}
+    </p>
+    {/* Visual representation of the planet */}
+    <div className="w-48 h-48 bg-blue-500 rounded-full shadow-2xl flex items-center justify-center animate-spin-slow-planet">
+      <span className="text-xl font-bold">{selectedPlanet.name}</span>
+    </div>
+    {selectedPlanet.hasCivilization && (
+      <div
+        className="absolute cursor-pointer bg-red-700 hover:bg-red-600 transition-colors duration-300 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-xl animate-pulse-civilization"
+        style={{
+          width: '60px',
+          height: '60px',
+          top: '70%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+        onClick={onCivilizationClick}
+      >
+        Civilisation
+      </div>
+    )}
+    <button
+      onClick={onZoomOut}
+      className="absolute bottom-4 left-4 px-4 py-2 bg-gray-700 text-white rounded-full hover:bg-gray-600 transition-colors"
+    >
+      Retour
+    </button>
+  </div>
+);
+
+// Scene for Civilization View
+const CivilizationScene = ({ selectedPlanet, onZoomOut }) => (
+  <div className="flex flex-col items-center justify-center h-full p-4 bg-black bg-opacity-70 text-white rounded-lg shadow-lg"> {/* Adjusted background to rgba with opacity */}
+    <h2 className="text-4xl font-bold mb-6 text-orange-300 text-center">Civilisation des Titans sur {selectedPlanet?.name || 'la Planète'}</h2>
+    {/* Pyramids of Logs - now representing concepts */}
+    <div className="relative w-full max-w-4xl h-8 flex items-end justify-center mt-4 mb-4">
+      <div className="absolute w-4 h-4 bg-transparent border border-blue-400 transform rotate-45 skew-y-12 -skew-x-12 origin-bottom-left shadow-lg animate-pyramid-concept" style={{ left: '45%', bottom: '0' }}></div>
+      <div className="absolute w-5 h-5 bg-transparent border border-blue-400 transform rotate-45 skew-y-12 -skew-x-12 origin-bottom-left shadow-xl animate-pyramid-concept" style={{ left: '50%', bottom: '0', zIndex: 10, animationDelay: '0.5s' }}></div>
+      <div className="absolute w-4 h-4 bg-transparent border border-blue-400 transform rotate-45 skew-y-12 -skew-x-12 origin-bottom-left shadow-lg animate-pyramid-concept" style={{ left: '55%', bottom: '0', animationDelay: '1s' }}></div>
+    </div>
+    <div className="w-full flex-grow">
+      <SuperChatbotView onZoomOut={onZoomOut} />
+    </div>
+  </div>
+);
+
+// Component for a single star
+const Star = ({ size, top, left, animationDelay }) => (
+  <div
+    className="absolute bg-white rounded-full animate-twinkle"
+    style={{
+      width: `${size}px`,
+      height: `${size}px`,
+      top: `${top}%`,
+      left: `${left}%`,
+      animationDelay: `${animationDelay}s`,
+    }}
+  />
+);
+
+// Component for the background stars
+const StarsBackground = () => {
+  const stars = Array.from({ length: 100 }).map((_, i) => ({
+    id: i,
+    size: Math.random() * 2 + 0.5, // 0.5px to 2.5px
+    top: Math.random() * 100,
+    left: Math.random() * 100,
+    animationDelay: Math.random() * 5,
+  }));
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {stars.map(star => (
+        <Star key={star.id} {...star} />
+      ))}
+    </div>
+  );
+};
+
+// Component for a single asteroid
+const Asteroid = ({ size, top, left, animationDelay, duration }) => (
+  <div
+    className="absolute bg-gray-600 rounded-full animate-asteroid-move"
+    style={{
+      width: `${size}px`,
+      height: `${size}px`,
+      top: `${top}%`,
+      left: `${left}%`,
+      animationDelay: `${animationDelay}s`,
+      animationDuration: `${duration}s`,
+      transform: `translate(-50%, -50%) rotate(${Math.random() * 360}deg)`, // Initial random rotation
+    }}
+  />
+);
+
+// Component for the asteroids background
+const AsteroidsBackground = () => {
+  const asteroids = Array.from({ length: 10 }).map((_, i) => ({
+    id: i,
+    size: Math.random() * 10 + 5, // 5px to 15px
+    top: Math.random() * 100,
+    left: Math.random() * 100,
+    animationDelay: Math.random() * 15,
+    duration: Math.random() * 30 + 20, // 20s to 50s for slow movement
+  }));
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {asteroids.map(asteroid => (
+        <Asteroid key={asteroid.id} {...asteroid} />
+      ))}
+    </div>
+  );
+};
+
+
+const App = () => {
+  const [zoomLevel, setZoomLevel] = useState('cosmic'); // 'cosmic', 'galactic', 'stellar', 'planetary', 'civilization'
+  const [selectedGalaxyId, setSelectedGalaxyId] = useState(null);
+  const [selectedSystemId, setSelectedSystemId] = useState(null);
+  const [selectedPlanetId, setSelectedPlanetId] = useState(null);
+
+  const getSelectedGalaxy = () => universeData.galaxies.find(g => g.id === selectedGalaxyId);
+  const getSelectedSystem = () => getSelectedGalaxy()?.systems.find(s => s.id === selectedSystemId);
+  const getSelectedPlanet = () => getSelectedSystem()?.planets.find(p => p.id === selectedPlanetId);
+
+  const handleGalaxyClick = (id) => {
+    setSelectedGalaxyId(id);
+    setZoomLevel('galactic');
+  };
+
+  const handleSystemClick = (id) => {
+    setSelectedSystemId(id);
+    setZoomLevel('stellar');
+  };
+
+  const handlePlanetClick = (id) => {
+    setSelectedPlanetId(id);
+    setZoomLevel('planetary');
+  };
+
+  const handleCivilizationClick = () => {
+    setZoomLevel('civilization');
+  };
+
+  const handleZoomOut = useCallback(() => {
+    if (zoomLevel === 'civilization') {
+      setZoomLevel('planetary');
+    } else if (zoomLevel === 'planetary') {
+      setSelectedPlanetId(null);
+      setZoomLevel('stellar');
+    } else if (zoomLevel === 'stellar') {
+      setSelectedSystemId(null);
+      setZoomLevel('galactic');
+    } else if (zoomLevel === 'galactic') {
+      setSelectedGalaxyId(null);
+      setZoomLevel('cosmic');
+    }
+  }, [zoomLevel]); // Add zoomLevel to dependency array for useCallback
+
+  return (
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 font-inter relative overflow-hidden">
+      {/* Background elements */}
+      <StarsBackground />
+      {/* Removed ShootingStarsBackground */}
+      <AsteroidsBackground />
+
+      <style>
+        {`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+        body {
+          font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom scrollbar for chat and info panels */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #374151; /* gray-700 */
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #4b5563; /* gray-600 */
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #6b7280; /* gray-500 */
+        }
+
+        /* Keyframes for various elements */
+        @keyframes pulse-galaxy {
+          0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+          50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+        }
+        .animate-pulse-galaxy {
+          animation: pulse-galaxy 10s infinite linear; /* Slower, continuous rotation with pulse */
+        }
+
+        @keyframes pulse-system {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+          50% { transform: translate(-50%, -50%) scale(1.03); opacity: 1; }
+        }
+        @keyframes pulse-planet {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.95; }
+          50% { transform: translate(-50%, -50%) scale(1.02); opacity: 1; }
+        }
+        @keyframes pulse-civilization {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
+          50% { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+        }
+        @keyframes spin-slow-planet {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Bidirectional data flow animation - refined pulse */
+        @keyframes data-flow-bidirectional {
+          0%, 100% {
+            opacity: 0.3;
+            stroke-width: 1px;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            stroke-width: 3px;
+            transform: scale(1.05);
+          }
+        }
+        .animate-data-flow-bidirectional {
+          animation: data-flow-bidirectional 2s ease-in-out infinite alternate; /* Use alternate for smooth back and forth */
+        }
+
+        /* New animation for pyramids */
+        @keyframes pyramid-concept {
+          0%, 100% {
+            box-shadow: 0 0 10px rgba(129, 202, 253, 0.6), 0 0 20px rgba(129, 202, 253, 0.4); /* Blue glow */
+            background-color: rgba(20, 20, 50, 0.8); /* Dark blue, semi-transparent */
+            border: 1px solid rgba(129, 202, 253, 0.5);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(129, 202, 253, 0.9), 0 0 50px rgba(129, 202, 253, 0.7);
+            background-color: rgba(30, 30, 70, 0.9);
+            border: 1px solid rgba(129, 202, 253, 0.8);
+          }
+        }
+        .animate-pyramid-concept {
+          animation: pyramid-concept 4s infinite alternate ease-in-out;
+        }
+
+        /* Spiral drawing animation */
+        @keyframes spiral-draw {
+          0% {
+            stroke-dasharray: 0 1000; /* Start with no stroke */
+          }
+          100% {
+            stroke-dasharray: 1000 0; /* End with full stroke */
+          }
+        }
+        .animate-spiral-draw {
+          stroke-dasharray: 1000; /* Initial state for animation */
+          stroke-dashoffset: 1000;
+          animation: spiral-draw 3s ease-out forwards; /* Draw over 3 seconds */
+        }
+
+        /* Center pulse for galaxies */
+        @keyframes pulse-center {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.2); opacity: 1; }
+        }
+        .animate-pulse-center {
+          animation: pulse-center 2s infinite ease-in-out;
+        }
+
+        /* Orbit animation for planets */
+        /* Removed @keyframes orbit-planet as animation is disabled */
+
+        /* Sun spin animation */
+        @keyframes spin-sun {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Sun glow */
+        .shadow-sun-glow {
+          box-shadow: 0 0 15px 5px rgba(252, 211, 77, 0.7), 0 0 30px 10px rgba(252, 211, 77, 0.5);
+        }
+
+        /* Twinkling stars */
+        @keyframes twinkle {
+          0%, 100% { opacity: 0.5; }
+          50% { opacity: 1; }
+        }
+        .animate-twinkle {
+          animation: twinkle 4s infinite ease-in-out alternate;
+        }
+
+        /* Shooting star animation - REMOVED */
+        /* @keyframes shooting-star {
+          0% {
+            transform: translate(0, 0) rotate(45deg);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+          }
+          90% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-150vw, 150vh) rotate(45deg);
+            opacity: 0;
+          }
+        }
+        .animate-shooting-star {
+          animation: shooting-star linear infinite;
+        } */
+
+        /* Asteroid movement */
+        @keyframes asteroid-move {
+          0% {
+            transform: translate(-50%, -50%) rotate(0deg) translateX(0) translateY(0);
+          }
+          25% {
+            transform: translate(-50%, -50%) rotate(90deg) translateX(10vw) translateY(5vh);
+          }
+          50% {
+            transform: translate(-50%, -50%) rotate(180deg) translateX(20vw) translateY(-10vh);
+          }
+          75% {
+            transform: translate(-50%, -50%) rotate(270deg) translateX(10vw) translateY(-15vh);
+          }
+          100% {
+            transform: translate(-50%, -50%) rotate(360deg) translateX(0) translateY(0);
+          }
+        }
+        .animate-asteroid-move {
+          animation: asteroid-move linear infinite;
+        }
+        `}
+      </style>
+
+      <div className="bg-black bg-opacity-50 rounded-xl shadow-2xl p-8 max-w-5xl w-full flex flex-col items-center z-10"> {/* Changed background to black with 50% opacity */}
+        <h1 className="text-5xl font-extrabold mb-8 text-white text-center">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+            Univers Virtuel
+          </span>
+          <br />
+          <span className="text-3xl text-gray-300">Exploration Immersive</span>
+        </h1>
+
+        {/* Dynamic View Content */}
+        <div className="w-full h-[600px] md:h-[700px] bg-black bg-opacity-30 rounded-lg overflow-hidden relative flex items-center justify-center"> {/* Changed background to black with 30% opacity */}
+          {zoomLevel === 'cosmic' && <CosmicScene onGalaxyClick={handleGalaxyClick} />}
+          {zoomLevel === 'galactic' && selectedGalaxyId && (
+            <GalacticScene
+              selectedGalaxy={getSelectedGalaxy()}
+              onSystemClick={handleSystemClick}
+              onZoomOut={handleZoomOut}
+            />
+          )}
+          {zoomLevel === 'stellar' && selectedSystemId && (
+            <StellarScene
+              selectedSystem={getSelectedSystem()}
+              onPlanetClick={handlePlanetClick}
+              onZoomOut={handleZoomOut}
+            />
+          )}
+          {zoomLevel === 'planetary' && selectedPlanetId && (
+            <PlanetaryScene
+              selectedPlanet={getSelectedPlanet()}
+              onCivilizationClick={handleCivilizationClick}
+              onZoomOut={handleZoomOut}
+            />
+          )}
+          {zoomLevel === 'civilization' && selectedPlanetId && (
+            <CivilizationScene
+              selectedPlanet={getSelectedPlanet()}
+              onZoomOut={handleZoomOut}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
 <!DOCTYPE html>
 <html lang="fr">
 <head>
